@@ -1,21 +1,26 @@
 package com.dcman58.warpplugin;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import net.minecraft.util.com.google.common.collect.Lists;
+
 @SuppressWarnings("all")
-public class Main extends JavaPlugin implements Listener {
+public class Main extends JavaPlugin implements Listener, TabCompleter {
 
 	Map<String, Location> warps = new HashMap<String, Location>();
 	List<String> names;
@@ -24,6 +29,7 @@ public class Main extends JavaPlugin implements Listener {
 	public void onEnable() {
 		message("Now Enabling the DcCraft Warp Plugin");
 		this.getCommand("warp").setExecutor(this);
+		this.getCommand("warp").setTabCompleter(this);
 		getConfig().options().copyDefaults();
 		saveDefaultConfig();
 		Bukkit.getPluginManager().registerEvents(this, this);
@@ -34,11 +40,22 @@ public class Main extends JavaPlugin implements Listener {
 		System.out.println(message);
 	}
 
-	public void editConfig() {
-		List<String> s = getConfig().getStringList("Name");
-		for (String key : warps.keySet()) {
-
+	@Override
+	public List<String> onTabComplete(CommandSender sender, Command cmd, String label, String[] args) {
+		Player player = (Player) sender;
+		List<String> finalString = Lists.newArrayList();
+		for (String key : getConfig().getConfigurationSection("Name").getKeys(false)) {
+			List<String> l = Arrays.asList("list", "set", "random", key);
+			if (args.length == 1) {
+				for (String i : l) {
+					if (i.toLowerCase().startsWith(args[0]))
+						finalString.add(i);
+				}
+				return finalString;
+			}
+			// player.sendMessage(ChatColor.GOLD + key);
 		}
+		return null;
 	}
 
 	@Override
@@ -83,10 +100,12 @@ public class Main extends JavaPlugin implements Listener {
 				Random r = new Random();
 				for (Player online : Bukkit.getOnlinePlayers()) {
 					if (args.length < 2) {
-						player.teleport(new Location(player.getWorld(), player.getLocation().getX() + r.nextInt(55000), player.getLocation().getY() + 30, player.getLocation().getZ() + r.nextInt(55000)));
+						player.teleport(new Location(player.getWorld(), player.getLocation().getX() + r.nextInt(55000),
+								player.getLocation().getY() + 30, player.getLocation().getZ() + r.nextInt(55000)));
 						return true;
 					} else if (args[1].equalsIgnoreCase(online.getDisplayName())) {
-						online.teleport(new Location(player.getWorld(), player.getLocation().getX() + r.nextInt(55000), player.getLocation().getY() + 30, player.getLocation().getZ() + r.nextInt(55000)));
+						online.teleport(new Location(player.getWorld(), player.getLocation().getX() + r.nextInt(55000),
+								player.getLocation().getY() + 30, player.getLocation().getZ() + r.nextInt(55000)));
 						return true;
 					}
 				}
@@ -104,11 +123,14 @@ public class Main extends JavaPlugin implements Listener {
 					if (args[0].equalsIgnoreCase(key)) {
 						float yaw = getConfig().getInt("Name." + args[0] + ".yaw");
 						float pitch = getConfig().getInt("Name." + args[0] + ".pitch");
-						double x = getConfig().getDouble("Name." + args[0] + ".x"), y = getConfig().getDouble("Name." + args[0] + ".y"), z = getConfig().getDouble("Name." + args[0] + ".z");
+						double x = getConfig().getDouble("Name." + args[0] + ".x"),
+								y = getConfig().getDouble("Name." + args[0] + ".y"),
+								z = getConfig().getDouble("Name." + args[0] + ".z");
 						World w = Bukkit.getWorld(getConfig().getString("Name." + args[0] + ".world"));
 						Location loc = new Location(w, x, y, z, yaw, pitch);
 						for (Player online : Bukkit.getOnlinePlayers()) {
-							if (args.length > 1 && !(args[0].equalsIgnoreCase("list")) && args[1].equalsIgnoreCase(online.getDisplayName())) {
+							if (args.length > 1 && !(args[0].equalsIgnoreCase("list"))
+									&& args[1].equalsIgnoreCase(online.getDisplayName())) {
 								online.teleport(loc);
 								return true;
 							}
