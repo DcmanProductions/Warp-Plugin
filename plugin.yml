@@ -1,0 +1,7 @@
+main: com.dcman58.warpplugin.Main
+name: DcCraft2 WarpPlugin
+description: An Awesome way to warp to different locations.
+version: 0.01
+commands: 
+  warp: 
+    description: warp home sends you to bed spawn.
