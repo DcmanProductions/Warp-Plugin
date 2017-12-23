@@ -1,5 +1,6 @@
 package com.dcman58.warpplugin;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -24,6 +25,7 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 
 	Map<String, Location> warps = new HashMap<String, Location>();
 	List<String> names;
+	CommandSender sender;
 
 	@Override
 	public void onEnable() {
@@ -44,22 +46,24 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 	public List<String> onTabComplete(CommandSender sender, Command cmd, String label, String[] args) {
 		Player player = (Player) sender;
 		List<String> finalString = Lists.newArrayList();
-		for (String key : getConfig().getConfigurationSection("Name").getKeys(false)) {
-			List<String> l = Arrays.asList("list", "set", "random", key);
-			if (args.length == 1) {
-				for (String i : l) {
-					if (i.toLowerCase().startsWith(args[0]))
-						finalString.add(i);
-				}
-				return finalString;
+		finalString.addAll(getConfig().getConfigurationSection("Name").getKeys(false));
+
+		List<String> l = Arrays.asList("list", "set", "random");
+		if (args.length == 1) {
+			for (String j : l) {
+				if (j.toLowerCase().startsWith(args[0]))
+					finalString.add(j);
 			}
-			// player.sendMessage(ChatColor.GOLD + key);
 		}
-		return null;
+
+		return finalString;
+		// player.sendMessage(ChatColor.GOLD + key);
+
 	}
 
 	@Override
 	public boolean onCommand(CommandSender sender, Command cmd, String lable, String[] args) {
+		this.sender = sender;
 
 		if (sender instanceof Player) {
 			Player player = (Player) sender;
@@ -91,10 +95,9 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 				}
 			} else if (args[0].equalsIgnoreCase("remove")) {
 				getConfig().getConfigurationSection("Name").set(args[1], null);
+
 			} else if (args[0].equalsIgnoreCase("list")) {
-				for (String key : getConfig().getConfigurationSection("Name").getKeys(false)) {
-					player.sendMessage(ChatColor.GOLD + key);
-				}
+				player.sendMessage(ChatColor.GOLD + getList().toString());
 				return true;
 			} else if (args[0].equalsIgnoreCase("random")) {
 				Random r = new Random();
@@ -145,6 +148,17 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 			message("This command can only be run as a player");
 		}
 		return false;
+	}
+
+	public List<String> getList() {
+		Player player = (Player) sender;
+		List<String> f = Lists.newArrayList();
+		// for (String key : getConfig().getConfigurationSection("Name").getKeys(false))
+		// {
+		// f.add(key);
+		// }
+		f.addAll(getConfig().getConfigurationSection("Name").getKeys(false));
+		return f;
 	}
 
 }
