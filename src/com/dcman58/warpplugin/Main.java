@@ -29,13 +29,17 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 
 	@Override
 	public void onEnable() {
-		message("Now Enabling the DcCraft Warp Plugin");
+		message(ChatColor.GOLD+"Now Enabling the DcCraft Warp Plugin");
 		this.getCommand("warp").setExecutor(this);
 		this.getCommand("warp").setTabCompleter(this);
 		getConfig().options().copyDefaults();
 		saveDefaultConfig();
 		Bukkit.getPluginManager().registerEvents(this, this);
-
+	}
+	
+	@Override
+	public void onDisable() {
+		message(ChatColor.GREEN+"Disabling Warp Plugin");
 	}
 
 	public void message(String message) {
@@ -48,16 +52,27 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 		List<String> finalString = Lists.newArrayList();
 		finalString.addAll(getConfig().getConfigurationSection("Name").getKeys(false));
 
-		List<String> l = Arrays.asList("list", "set", "random");
+		List<String> l = Arrays.asList("home", "list", "set", "random", "me");
+		List<String> args2String = Lists.newArrayList();
 		if (args.length == 1) {
-			for (String j : l) {
-				if (j.toLowerCase().startsWith(args[0]))
+			for (String j : l)
+				if (j.toLowerCase().startsWith(args[0])) {
 					finalString.add(j);
+				}
+
+		} else if (args.length == 2) {
+
+			finalString.clear();
+
+			for (Player p : Bukkit.getOnlinePlayers()) {
+				if (p.equals(player))
+					return null;
+				else if (args[1].startsWith(p.getDisplayName())) {
+					finalString.add(p.getDisplayName());
+				}
 			}
 		}
-
 		return finalString;
-		// player.sendMessage(ChatColor.GOLD + key);
 
 	}
 
@@ -69,12 +84,17 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 			Player player = (Player) sender;
 			if (args[0].equalsIgnoreCase("home")) {
 				if (player.getBedSpawnLocation() != null) {
-					player.teleport(player.getBedSpawnLocation());
+					 player.teleport(new Location(player.getBedSpawnLocation().getWorld(), player.getBedSpawnLocation().getX(),player.getBedSpawnLocation().getY()+1,player.getBedSpawnLocation().getZ()));
 					return true;
 				} else {
 					player.sendMessage("Currenlty, You have no home set");
 				}
 
+			}
+			if (args[0].equalsIgnoreCase("reload")) {
+				onDisable();
+				onEnable();
+				player.sendMessage(ChatColor.GREEN + "Warp Plugin has been reloaded!");
 			}
 			if (args[0].equalsIgnoreCase("set")) {
 				if (args[1].equalsIgnoreCase("home")) {
@@ -107,8 +127,8 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 								player.getLocation().getY() + 30, player.getLocation().getZ() + r.nextInt(55000)));
 						return true;
 					} else if (args[1].equalsIgnoreCase(online.getDisplayName())) {
-						online.teleport(new Location(player.getWorld(), player.getLocation().getX() + r.nextInt(55000),
-								player.getLocation().getY() + 30, player.getLocation().getZ() + r.nextInt(55000)));
+						online.teleport(new Location(online.getWorld(), online.getLocation().getX() + r.nextInt(55000),
+								online.getLocation().getY(), online.getLocation().getZ() + r.nextInt(55000)));
 						return true;
 					}
 				}
@@ -145,6 +165,40 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 				}
 			}
 		} else {
+			Random r = new Random();
+			for (Player online : Bukkit.getOnlinePlayers()) {
+				if (args[0].equalsIgnoreCase("random") && args[1].equalsIgnoreCase(online.getDisplayName())) {
+					online.teleport(new Location(online.getWorld(), online.getLocation().getX() + r.nextInt(55000),
+							online.getLocation().getY(), online.getLocation().getZ() + r.nextInt(55000)));
+					return true;
+				}
+
+				for (String key : getConfig().getConfigurationSection("Name").getKeys(true)) {
+					if (args[0].equalsIgnoreCase(key)) {
+						float yaw = getConfig().getInt("Name." + args[0] + ".yaw");
+						float pitch = getConfig().getInt("Name." + args[0] + ".pitch");
+						double x = getConfig().getDouble("Name." + args[0] + ".x"),
+								y = getConfig().getDouble("Name." + args[0] + ".y"),
+								z = getConfig().getDouble("Name." + args[0] + ".z");
+						World w = Bukkit.getWorld(getConfig().getString("Name." + args[0] + ".world"));
+						Location loc = new Location(w, x, y, z, yaw, pitch);
+						if (args.length > 1 && !(args[0].equalsIgnoreCase("list"))
+								&& args[1].equalsIgnoreCase(online.getDisplayName())) {
+							online.teleport(loc);
+							return true;
+						}
+					}
+				}
+
+			}
+			
+			if (args[0].equalsIgnoreCase("reload")) {
+				onDisable();
+				onEnable();
+				message("Warp Plugin has been reloaded!");
+				return true;
+			}
+
 			message("This command can only be run as a player");
 		}
 		return false;
