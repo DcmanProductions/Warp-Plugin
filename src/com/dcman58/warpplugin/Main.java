@@ -153,9 +153,9 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 					}
 				}
 			} else if (args[0].equalsIgnoreCase("back")) {
-				float yaw = getConfig().getInt(player.getDisplayName() + ".back.yaw"), pitch = getConfig().getInt("Name." + player.getDisplayName() + "back.pitch");
+				float yaw = getConfig().getInt(player.getDisplayName() + ".back.yaw"), pitch = getConfig().getInt(player.getDisplayName() + "back.pitch");
 				double x = getConfig().getInt(player.getDisplayName() + ".back.x"), y = getConfig().getInt(player.getDisplayName() + ".back.y"), z = getConfig().getInt(player.getDisplayName() + ".back.z");
-				World w = Bukkit.getWorld(getConfig().getString("Name." + player.getDisplayName() + ".back.world"));
+				World w = Bukkit.getWorld(getConfig().getString(player.getDisplayName() + ".back.world"));
 				Location loc = new Location(w, x, y, z, yaw, pitch);
 				back(player);
 				player.teleport(loc);
