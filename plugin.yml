@@ -1,9 +1,17 @@
 main: com.dcman58.warpplugin.Main
 name: WarpPlugin
 description: An Awesome way to warp to different locations.
-version: 0.25
+author: Drew Chase
+version: 2.1
 commands: 
   warp: 
     description: Allows you to warp to different waypoints.
+    usage: type /warp ? or /warp help for a complete command listing
   spawn: 
     description: Sends you to Spawn.
+    usage: /spawn
+Permissions:
+ dccraft.warp.set:
+    description: Permissions to use /warp set <name>
+ dccraft.warp.remove:
+    description: Permission to use /warp remove <name>
