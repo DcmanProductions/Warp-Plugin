@@ -1,17 +1,25 @@
+name: DcCraftWarps
+version: 2.6
 main: com.dcman58.warpplugin.Main
-name: WarpPlugin
-description: An Awesome way to warp to different locations.
+api-version: 1.13
+description: An Awesome way to get around town
+load: STARTUP
 author: Drew Chase
-version: 2.1
-commands: 
-  warp: 
-    description: Allows you to warp to different waypoints.
-    usage: type /warp ? or /warp help for a complete command listing
-  spawn: 
-    description: Sends you to Spawn.
+
+commands:
+  warp:
+    description: Main Warp Command
+    usage: /warp
+  spawn:
+    description: Brings You to world Spawn
     usage: /spawn
-Permissions:
- dccraft.warp.set:
-    description: Permissions to use /warp set <name>
- dccraft.warp.remove:
-    description: Permission to use /warp remove <name>
+  warp set:
+    description: Sets a Public Warp
+    permission: dccraft.warp.set, dccraft.warp.*
+    usage: /warp set <name>
+  warp set private:
+    description: Sets a Private Warp
+    usage: /warp set private <name>
+  warp help:
+    description: Gets a list of all Warp Commands
+    usage: /warp help or /warp ?

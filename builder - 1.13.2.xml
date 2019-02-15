@@ -1,0 +1,8 @@
+<?xml version="1.0" ?>
+<!-- Configuration of the Ant build system to generate a Jar file -->
+<project name="WarpPlugin" default="GenerateWarpJar">
+  <target name="GenerateWarpJar" description="Create Jar file for Warp Plugin">
+		<jar jarfile="E:/Minecraft Stuff/Plugin Testing Server/plugins/DcCraft_Warps.jar" basedir="E:/JavaWorkstation/WarpPlugin/target/classes/" includes="**/*" />
+		<jar jarfile="X:/servers/Public_Server/plugins/DcCraft_Warps.jar" basedir="E:/JavaWorkstation/WarpPlugin/target/classes/" includes="**/*" />
+ </target>
+</project>

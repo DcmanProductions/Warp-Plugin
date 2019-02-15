@@ -14,20 +14,17 @@ import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import com.google.common.collect.Lists;
-
 @SuppressWarnings("all")
-public class Main extends JavaPlugin implements Listener, TabCompleter {
+public class Main extends JavaPlugin implements CommandExecutor, Listener/* , TabCompleter */ {
 
 	Map<String, Location> warps = new HashMap<String, Location>();
 	List<String> names;
@@ -52,12 +49,12 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 		message(ChatColor.GREEN + "Disabling Warp Plugin");
 	}
 
-	@EventHandler
-	public void onPlayerJoin(PlayerJoinEvent e) {
-		Player p = e.getPlayer();
-		createPrivateWarp(p, "joinLoc");
-
-	}
+	// @EventHandler
+	// public void onPlayerJoin(PlayerJoinEvent e) {
+	// Player p = e.getPlayer();
+	// createPrivateWarp(p, "joinLoc");
+	//
+	// }
 
 	public void message(String message) {
 		System.out.println(message);
@@ -68,9 +65,14 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 		Player player = (Player) sender;
 		List<String> finalString = new ArrayList<String>();
 		List<String> nameString = new ArrayList<String>();
-		nameString.addAll(getAllWarps());
-		List<String> l = Arrays.asList("list", "set", "random", "rename", "invite", "move", "me", "help", "?");
+		nameString.addAll(getAllWarps(player));
+		List<String> l = Arrays.asList("list", "set", "random", "offline", "remove", "rename", "invite", "move", "me", "help", "?");
 		List<String> args2String = new ArrayList<String>();
+		List<String> allPlayers = new ArrayList<String>();
+
+		for (OfflinePlayer offline : Bukkit.getOfflinePlayers()) {
+			allPlayers.add(offline.getName());
+		}
 
 		if (args.length == 1) {
 			for (String j : l) {
@@ -102,22 +104,23 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 					}
 				}
 
+			} else if (args[0].equalsIgnoreCase("remove")) {
+				finalString.clear();
+				finalString.addAll(getPrivateWarps(player));
+				if (player.hasPermission("dccraft.warp.remove") || player.hasPermission("dccraft.warp.*"))
+					finalString.addAll(getPublicWarps());
 			} else if (args[0].equalsIgnoreCase("set")) {
 				finalString.clear();
 				finalString.add("private");
 			} else if (args[0].equalsIgnoreCase("invite") || args[0].equalsIgnoreCase("move")) {
 				if (args.length == 2) {
 					finalString.clear();
-					for (Player p : Bukkit.getOnlinePlayers()) {
-						if (p.equals(player))
-							return null;
-						else if (args[1].startsWith(p.getDisplayName())) {
-							finalString.add(p.getDisplayName());
-						}
-					}
-				} else if (args.length > 2) {
+					finalString.addAll(allPlayers);
+					return finalString;
+				} else if (args.length == 3) {
 					finalString.clear();
-					finalString.addAll(getPrivateWarps());
+					finalString.addAll(getPrivateWarps(player));
+					return finalString;
 				}
 			}
 		}
@@ -130,18 +133,15 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 		Player player = event.getEntity();
 		back(player);
 
-		for (String s : getPrivateWarps()) {
+		for (String s : getPrivateWarps(player)) {
 			if (s.equalsIgnoreCase("home")) {
 				Warp(player, "home");
 			}
 		}
-
 	}
 
 	@Override
 	public boolean onCommand(CommandSender sender, Command cmd, String lable, String[] args) {
-//		this.sender = sender;
-
 		if (sender instanceof Player) {
 			Player player = (Player) sender;
 			if (args.length == 0) {
@@ -149,7 +149,7 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 			} else if (args[0].equalsIgnoreCase("set") && !(args[1].equalsIgnoreCase("back"))) {
 				String name = args[1].toLowerCase();
 				if (!(args[1].equalsIgnoreCase("private")) && (player.hasPermission("dccraft.warp.set") || player.hasPermission("dccraft.warp.*"))) {
-					for (String s : getAllWarps()) {
+					for (String s : getAllWarps(player)) {
 						if (s.equalsIgnoreCase(name)) {
 							player.sendMessage("Sorry " + name + " is in use as a warp...  Please be more creative.");
 							return false;
@@ -161,7 +161,7 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 					}
 				} else {
 					if (!args[1].equalsIgnoreCase("private")) {
-						for (String s : getAllWarps()) {
+						for (String s : getAllWarps(player)) {
 							if (s.equalsIgnoreCase(name)) {
 								player.sendMessage("Sorry " + name + " is in use as a warp...  Please be more creative.");
 								return false;
@@ -189,55 +189,86 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 			} else if (args[0].equalsIgnoreCase("invite")) {
 				if (args.length < 3) {
 					player.sendMessage("/warp invite [player name] [warp name]");
-					return false;
 				} else {
-					Player player2 = player;
-					for (Player p : Bukkit.getOnlinePlayers()) {
-						if (args[1].equalsIgnoreCase(p.getDisplayName())) {
-							player2 = p;
-						} else {
-							player.sendMessage("Couldn't find player");
+					for (OfflinePlayer p : Bukkit.getOfflinePlayers()) {
+						if (args[1].equalsIgnoreCase(p.getName())) {
+							try {
+								inviteWarp(player, p, args[2]);
+								return true;
+							} catch (NullPointerException e) {
+								player.sendMessage(ChatColor.RED + "Player 2 is set to NULL");
+							} catch (ArrayIndexOutOfBoundsException e) {
+								player.sendMessage(ChatColor.RED + "ArrayIndexOutOfBoundException\nERROR: " + e.getMessage());
+							} catch (Exception e) {
+								player.sendMessage(ChatColor.RED + "ERROR: " + e.getMessage());
+								e.printStackTrace();
+							}
+
 						}
 					}
-					if (player2 != null)
-						return inviteWarp(player, player2, args[3]);
-					else {
-						player.sendMessage("Player 2 is set to NULL");
-						return false;
-					}
+				}
+			} else if (args[0].equalsIgnoreCase("offline")) {
+				for (OfflinePlayer p : Bukkit.getOfflinePlayers()) {
+					player.sendMessage(ChatColor.GOLD + "Player " + p.getName());
 				}
 			} else if (args[0].equalsIgnoreCase("move")) {
 				if (args.length < 3) {
 					player.sendMessage("/warp move [player name] [warp name]");
-					return false;
 				} else {
-					// Player player2 = null;
-					Player player2 = null;
-					for (Player p : Bukkit.getOnlinePlayers()) {
-						if (args[1].equalsIgnoreCase(p.getDisplayName())) {
-							player2.equals(p);
+					for (OfflinePlayer p : Bukkit.getOfflinePlayers()) {
+						if (args[1].equalsIgnoreCase(p.getName())) {
+							try {
+								inviteWarp(player, p, args[2]);
+							} catch (NullPointerException e) {
+								player.sendMessage(ChatColor.RED + "Player 2 is set to NULL");
+							} catch (ArrayIndexOutOfBoundsException e) {
+								player.sendMessage(ChatColor.RED + "ArrayIndexOutOfBoundException\nERROR: " + e.getMessage());
+							} catch (Exception e) {
+								player.sendMessage(ChatColor.RED + "ERROR: " + e.getMessage());
+								e.printStackTrace();
+							}
+
 						}
-					}
-					if (player2 != null)
-						return moveWarp(player, player2, args[3]);
-					else {
-						player.sendMessage("Player 2 is set to NULL");
-						return false;
 					}
 				}
 			} else if (args[0].equalsIgnoreCase("rename")) {
 				renameWarp(player, args[1].toLowerCase(), args[2].toLowerCase());
 			} else if (args[0].equalsIgnoreCase("remove")) {
+				boolean hasPublic = true, hasPrivate = true;
 				if (player.hasPermission("dccraft.warp.remove") || player.hasPermission("dccraft.warp.*")) {
-					getConfig().getConfigurationSection("Name").set(args[1].toLowerCase(), null);
-					player.sendMessage("Warp Removed: " + args[1]);
+					try {
+						getConfig().getConfigurationSection("Name").set(args[1].toLowerCase(), null);
+						player.sendMessage("Warp Removed: " + args[1]);
+					} catch (Exception e) {
+						hasPublic = false;
+					}
+					try {
+						getConfig().getConfigurationSection(player.getDisplayName()).set(args[1].toLowerCase(), null);
+					} catch (Exception e) {
+						hasPrivate = false;
+					}
+
+					if (!hasPrivate && !hasPublic) {
+						player.sendMessage(ChatColor.RED + "ERROR: " + args[1] + " doesn't exist try /warp list to find it");
+					}
 				} else {
-					getConfig().getConfigurationSection(player.getDisplayName()).set(args[2].toLowerCase(), null);
-					player.sendMessage("Private Warp Removed: " + args[1]);
+					try {
+						getConfig().getConfigurationSection(player.getDisplayName()).set(args[2].toLowerCase(), null);
+						player.sendMessage("Private Warp Removed: " + args[1]);
+					} catch (Exception e) {
+						player.sendMessage(ChatColor.RED + "ERROR: " + args[1] + " doesn't Exist or you don't have proper permissions to remove it.");
+					}
 				}
 
 			} else if (args[0].equalsIgnoreCase("list")) {
-				player.sendMessage(ChatColor.GOLD + getAllWarps().toString());
+				
+				for(String s : getAllWarps(player)){
+//					PlayerConnection connection = ((CraftPlayer) player).getHandle().playerConnection;
+//					PacketPlayOutChat packet = new PacketPlayOutChat(ChatSerializer.a("\"text\":\"%s\",\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/warp %s\"},\"hoverEvent\":{\"action\":\"show_text\",\"value\":{\"text\":\"\",\"extra\":[{\"text\":\"Warp To %s\",\"color\":\"green\"}]}}}"));
+					player.sendMessage(ChatColor.GOLD + s);
+				}
+				
+//				 player.sendMessage(ChatColor.GOLD + getAllWarps(player).toString().replace("[", "").replace("]", "").replace(",", "\n"));
 				return true;
 			} else if (args[0].equalsIgnoreCase("?") || args[0].equalsIgnoreCase("help")) {
 				player.sendMessage(ChatColor.GREEN + "/warp set <warp name>\n/warp random [player name(optional)]\n/warp set private <warp name>\n/warp list\n/warp me <other player name> -- to silently tp to another player\n");
@@ -318,26 +349,38 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 
 			}
 
+			if (args[0].equalsIgnoreCase("?") || args[0].equalsIgnoreCase("help")) {
+				message(ChatColor.GREEN + "/warp set <warp name>\n/warp random [player name(optional)]\n/warp set private <warp name>\n/warp list\n/warp me <other player name> -- to silently tp to another player\n");
+				return true;
+			}
+
+			if (args[0].equalsIgnoreCase("list")) {
+				for (String s : getPublicWarps()) {
+					message(s);
+				}
+				return true;
+			}
+
 			message("This command can only be run as a player");
 		}
 		return false;
 	}
 
-	private boolean inviteWarp(Player player, Player player2, String name) {
-		for (String s : getPrivateWarps()) {
+	private boolean inviteWarp(Player player, OfflinePlayer player2, String name) {
+		for (String s : getPrivateWarps(player)) {
 			if (s.equalsIgnoreCase(name)) {
 				float yaw = getConfig().getInt(player.getDisplayName() + "." + name + ".yaw");
 				float pitch = getConfig().getInt(player.getDisplayName() + "." + name + ".pitch");
 				double x = getConfig().getDouble(player.getDisplayName() + "." + name + ".x"), y = getConfig().getDouble(player.getDisplayName() + "." + name + ".y"), z = getConfig().getDouble(player.getDisplayName() + "." + name + ".z");
 				World w = Bukkit.getWorld(getConfig().getString(player.getDisplayName() + "." + name + ".world"));
 
-				getConfig().set(player2.getDisplayName() + "." + name + ".world", w.getName());
-				getConfig().set(player2.getDisplayName() + "." + name + ".x", x);
-				getConfig().set(player2.getDisplayName() + "." + name + ".y", y);
-				getConfig().set(player2.getDisplayName() + "." + name + ".z", z);
-				getConfig().set(player2.getDisplayName() + "." + name + ".yaw", yaw);
-				getConfig().set(player2.getDisplayName() + "." + name + ".pitch", pitch);
-				player.sendMessage(ChatColor.GREEN + "Warp Invite Sent: " + ChatColor.GOLD + name + " --> " + player2.getDisplayName());
+				getConfig().set(player2.getName() + "." + name + ".world", w.getName());
+				getConfig().set(player2.getName() + "." + name + ".x", x);
+				getConfig().set(player2.getName() + "." + name + ".y", y);
+				getConfig().set(player2.getName() + "." + name + ".z", z);
+				getConfig().set(player2.getName() + "." + name + ".yaw", yaw);
+				getConfig().set(player2.getName() + "." + name + ".pitch", pitch);
+				player.sendMessage(ChatColor.GREEN + "Warp Invite Sent: " + ChatColor.GOLD + name + " --> " + player2.getName());
 				saveConfig();
 				return true;
 			}
@@ -345,21 +388,21 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 		return false;
 	}
 
-	private boolean moveWarp(Player player, Player player2, String name) {
-		for (String s : getPrivateWarps()) {
+	private boolean moveWarp(Player player, OfflinePlayer player2, String name) {
+		for (String s : getPrivateWarps(player)) {
 			if (s.equalsIgnoreCase(name)) {
 				float yaw = getConfig().getInt(player.getDisplayName() + "." + name + ".yaw");
 				float pitch = getConfig().getInt(player.getDisplayName() + "." + name + ".pitch");
 				double x = getConfig().getDouble(player.getDisplayName() + "." + name + ".x"), y = getConfig().getDouble(player.getDisplayName() + "." + name + ".y"), z = getConfig().getDouble(player.getDisplayName() + "." + name + ".z");
 				World w = Bukkit.getWorld(getConfig().getString(player.getDisplayName() + "." + name + ".world"));
 
-				getConfig().set(player2.getDisplayName() + "." + name + ".world", w.getName());
-				getConfig().set(player2.getDisplayName() + "." + name + ".x", x);
-				getConfig().set(player2.getDisplayName() + "." + name + ".y", y);
-				getConfig().set(player2.getDisplayName() + "." + name + ".z", z);
-				getConfig().set(player2.getDisplayName() + "." + name + ".yaw", yaw);
-				getConfig().set(player2.getDisplayName() + "." + name + ".pitch", pitch);
-				player.sendMessage(ChatColor.GREEN + "Warp Owner Changed: " + ChatColor.GOLD + name + " --> " + player2.getDisplayName());
+				getConfig().set(player2.getName() + "." + name + ".world", w.getName());
+				getConfig().set(player2.getName() + "." + name + ".x", x);
+				getConfig().set(player2.getName() + "." + name + ".y", y);
+				getConfig().set(player2.getName() + "." + name + ".z", z);
+				getConfig().set(player2.getName() + "." + name + ".yaw", yaw);
+				getConfig().set(player2.getName() + "." + name + ".pitch", pitch);
+				player.sendMessage(ChatColor.GREEN + "Warp Owner Changed: " + ChatColor.GOLD + name + " --> " + player2.getName());
 				getConfig().getConfigurationSection(player.getDisplayName()).set(name, null);
 				saveConfig();
 				return true;
@@ -389,7 +432,7 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 					return true;
 				}
 			}
-			for (String s : getPrivateWarps()) {
+			for (String s : getPrivateWarps(player)) {
 				if (s.equalsIgnoreCase(name)) {
 					float yaw = getConfig().getInt(player.getDisplayName() + "." + name + ".yaw");
 					float pitch = getConfig().getInt(player.getDisplayName() + "." + name + ".pitch");
@@ -409,7 +452,7 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 				}
 			}
 		} else {
-			for (String s : getPrivateWarps()) {
+			for (String s : getPrivateWarps(player)) {
 				if (s.equalsIgnoreCase(name)) {
 					float yaw = getConfig().getInt(player.getDisplayName() + "." + name + ".yaw");
 					float pitch = getConfig().getInt(player.getDisplayName() + "." + name + ".pitch");
@@ -511,25 +554,39 @@ public class Main extends JavaPlugin implements Listener, TabCompleter {
 		saveConfig();
 	}
 
-	public List<String> getAllWarps() {
-		Player player = (Player) sender;
+	public List<String> getAllWarps(Player player) {
 		List<String> f = new ArrayList<String>();
-		f.addAll(getConfig().getConfigurationSection("Name").getKeys(false));
-		f.addAll(getConfig().getConfigurationSection(player.getDisplayName()).getKeys(false));
+		try {
+			f.addAll(getConfig().getConfigurationSection("Name").getKeys(false));
+		} catch (Exception e) {
+			f.add("");
+		}
+		try {
+			f.addAll(getConfig().getConfigurationSection(player.getDisplayName()).getKeys(false));
+		} catch (Exception e) {
+			f.add("");
+		}
 		return f;
 	}
 
-	public List<String> getPrivateWarps() {
-		Player player = (Player) sender;
+	public List<String> getPrivateWarps(Player player) {
+		// Player player = (Player) sender;
 		List<String> f = new ArrayList<String>();
-		f.addAll(getConfig().getConfigurationSection(player.getDisplayName()).getKeys(false));
+		try {
+			f.addAll(getConfig().getConfigurationSection(player.getDisplayName()).getKeys(false));
+		} catch (Exception e) {
+			f.add("You don't have any private warps");
+		}
 		return f;
 	}
 
 	public List<String> getPublicWarps() {
-		Player player = (Player) sender;
 		List<String> f = new ArrayList<String>();
-		f.addAll(getConfig().getConfigurationSection("Name").getKeys(false));
+		try {
+			f.addAll(getConfig().getConfigurationSection("Name").getKeys(false));
+		} catch (Exception e) {
+			f.add("There are no Public Warps to speak of");
+		}
 		return f;
 	}
 
